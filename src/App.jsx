@@ -8,7 +8,6 @@ const API_URL = "https://electribackend-1.onrender.com/groceries";
 const App = () => {
   const [groceries, setGroceries] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [electricianName, setElectricianName] = useState("");
   const [buyerName, setBuyerName] = useState("");
   const [newItem, setNewItem] = useState({
     name: "",
@@ -33,7 +32,10 @@ const App = () => {
 
     const updatedItem = groceries.find((item) => item.id === id);
     if (updatedItem) {
-      await axios.put(`${API_URL}/${id}`, { ...updatedItem, checked: !updatedItem.checked });
+      await axios.put(`${API_URL}/${id}`, {
+        ...updatedItem,
+        checked: !updatedItem.checked,
+      });
     }
   };
 
@@ -47,7 +49,8 @@ const App = () => {
     setTimeout(() => {
       const updatedItem = groceries.find((item) => item.id === id);
       if (updatedItem) {
-        axios.put(`${API_URL}/${id}`, { ...updatedItem, [field]: value })
+        axios
+          .put(`${API_URL}/${id}`, { ...updatedItem, [field]: value })
           .catch((error) => console.error("Error updating item:", error));
       }
     }, 1000);
@@ -70,6 +73,15 @@ const App = () => {
     setNewItem({ name: "", measurementsArea: "", qty: "", image: "" });
   };
 
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`${API_URL}/${id}`);
+      setGroceries((prev) => prev.filter((item) => item.id !== id));
+    } catch (error) {
+      console.error("Error deleting item:", error);
+    }
+  };
+
   const filteredGroceries = groceries.filter((item) =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -85,7 +97,7 @@ const App = () => {
     const tableContent = `
       <html>
       <head>
-        <title>Selected Electrical Items</title>
+        <title>Electrical Items</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; }
           table { border-collapse: collapse; width: 100%; }
@@ -96,17 +108,17 @@ const App = () => {
         </style>
       </head>
       <body>
-        <h2>Electrician Name: ${electricianName}</h2> 
         <h2>Buyer Name: ${buyerName}</h2> 
         <table>
           <thead>
-            <tr><th>Name</th><th>Measurements</th><th>Quantity</th></tr>
+            <tr><th>S.No</th><th>Name</th><th>Measurements</th><th>Quantity</th></tr>
           </thead>
           <tbody>
             ${checkedGroceries
               .map(
-                (item) =>
+                (item, index) =>
                   `<tr>
+                    <td>${index + 1}</td>
                     <td>${item.name.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>
                     <td>${item.measurementsArea}</td>
                     <td>${item.qty}</td>
@@ -139,45 +151,80 @@ const App = () => {
 
   return (
     <div className="container">
-       <input type="text" placeholder="Electrician Name" value={electricianName} onChange={(e) => setElectricianName(e.target.value)} />
-      <input type="text" placeholder="Buyer Name" value={buyerName} onChange={(e) => setBuyerName(e.target.value)} />
+      <input
+        type="text"
+        placeholder="Buyer Name"
+        value={buyerName}
+        onChange={(e) => setBuyerName(e.target.value)}
+      />
 
       <h1 className="title">Electrical List</h1>
 
-      <input type="text" placeholder="Search items..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-     
+      <input
+        type="text"
+        placeholder="Search items..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+
       <h2>Electrical Items</h2>
       <table border="1">
         <thead>
           <tr>
+            <th>S.No</th>
             <th>Select</th>
             <th>Image</th>
             <th>Name</th>
             <th>Measurements</th>
             <th>Quantity</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          {filteredGroceries.map((item) => (
+          {filteredGroceries.map((item, index) => (
             <tr key={item.id}>
+              <td>{index + 1}</td>
               <td>
-                <input type="checkbox" checked={item.checked || false} onChange={() => handleCheckboxChange(item.id)} />
+                <input
+                  type="checkbox"
+                  checked={item.checked || false}
+                  onChange={() => handleCheckboxChange(item.id)}
+                />
               </td>
-              <td>{item.image ? <img src={item.image} alt={item.name} width="50" /> : "No Image"}</td>
+              <td>
+                {item.image ? (
+                  <img src={item.image} alt={item.name} width="50" />
+                ) : (
+                  "No Image"
+                )}
+              </td>
               <td>{item.name}</td>
               <td>
                 {item.checked ? (
-                  <input type="text" value={item.measurementsArea} onChange={(e) => handleEditChange(item.id, "measurementsArea", e.target.value)} />
+                  <input
+                    type="text"
+                    value={item.measurementsArea}
+                    onChange={(e) =>
+                      handleEditChange(item.id, "measurementsArea", e.target.value)
+                    }
+                  />
                 ) : (
                   item.measurementsArea
                 )}
               </td>
               <td>
                 {item.checked ? (
-                  <input type="number" value={item.qty} onChange={(e) => handleEditChange(item.id, "qty", e.target.value)} />
+                  <input
+                    type="number"
+                    value={item.qty}
+                    onChange={(e) => handleEditChange(item.id, "qty", e.target.value)}
+                  />
                 ) : (
                   item.qty
                 )}
+              </td>
+              <td>
+                <button onClick={() => handleDelete(item.id)}>Delete</button>
               </td>
             </tr>
           ))}
@@ -185,18 +232,43 @@ const App = () => {
       </table>
 
       <h2>Add Item</h2>
-      <input type="text" name="name" placeholder="Item Name" value={newItem.name} onChange={handleNewItemChange} />
-      <input type="text" name="measurementsArea" placeholder="Measurements" value={newItem.measurementsArea} onChange={handleNewItemChange} />
-      <input type="text" name="qty" placeholder="Quantity" value={newItem.qty} onChange={handleNewItemChange} />
-      <input type="text" name="image" placeholder="Image URL" value={newItem.image} onChange={handleNewItemChange} />
+      <input
+        type="text"
+        name="name"
+        placeholder="Item Name"
+        value={newItem.name}
+        onChange={handleNewItemChange}
+      />
+      <input
+        type="text"
+        name="measurementsArea"
+        placeholder="Measurements"
+        value={newItem.measurementsArea}
+        onChange={handleNewItemChange}
+      />
+      <input
+        type="text"
+        name="qty"
+        placeholder="Quantity"
+        value={newItem.qty}
+        onChange={handleNewItemChange}
+      />
+      <input
+        type="text"
+        name="image"
+        placeholder="Image URL"
+        value={newItem.image}
+        onChange={handleNewItemChange}
+      />
       <button onClick={handleAddItem}>Add Item</button>
-   {/* Selected Items Section */}
-   {checkedGroceries.length > 0 && (
+
+      {checkedGroceries.length > 0 && (
         <div className="selected-items">
           <h2>Selected Electrical Items</h2>
           <table border="1">
             <thead>
               <tr>
+                <th>Checked S.No</th>
                 <th>Image</th>
                 <th>Name</th>
                 <th>Measurements</th>
@@ -204,8 +276,9 @@ const App = () => {
               </tr>
             </thead>
             <tbody>
-              {checkedGroceries.map((item) => (
+              {checkedGroceries.map((item, index) => (
                 <tr key={item.id}>
+                  <td>{index + 1}</td>
                   <td>
                     {item.image ? (
                       <img src={item.image} alt={item.name} width="50" />
@@ -222,7 +295,11 @@ const App = () => {
           </table>
         </div>
       )}
-      <button onClick={previewCheckedData} disabled={checkedGroceries.length === 0}>
+
+      <button
+        onClick={previewCheckedData}
+        disabled={checkedGroceries.length === 0}
+      >
         Preview & Download
       </button>
     </div>
